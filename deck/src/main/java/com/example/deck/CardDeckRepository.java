@@ -2,4 +2,4 @@ package com.example.deck;
 
 import org.springframework.data.repository.CrudRepository;
 
-public interface CardRepository extends CrudRepository<Card, Long> {}
+public interface CardDeckRepository extends CrudRepository<CardDeck, Long> {}

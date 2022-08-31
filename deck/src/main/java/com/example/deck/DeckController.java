@@ -14,91 +14,116 @@ import static java.util.UUID.randomUUID;
 public class DeckController {
 
     @Autowired
-    private DeckRepository deckRepository;
-
-    @Autowired
-    private CardRepository cardRepository;
-
-    @Autowired
-    private ValueRepository valueRepository;
+    private CardDeckRepository cardDeckRepository;
 
     @GetMapping("/new")
-    public String newDeck(@RequestParam(value = "decks", defaultValue = "1") Long decks) {
-        // Drop tables and start new
-        deckRepository.deleteAll();
-        cardRepository.deleteAll();
-        valueRepository.deleteAll();
+    public List<CardDeck> newDeck(@RequestParam(value = "decks", defaultValue = "1") Long decks) {
 
-        // Initialize values table
-        valueRepository.save(new Value("Two", 2L));
-        valueRepository.save(new Value("Three", 3L));
-        valueRepository.save(new Value("Four", 4L));
-        valueRepository.save(new Value("Five", 5L));
-        valueRepository.save(new Value("Six", 6L));
-        valueRepository.save(new Value("Seven", 7L));
-        valueRepository.save(new Value("Eight", 8L));
-        valueRepository.save(new Value("Nine", 9L));
-        valueRepository.save(new Value("Ten", 10L));
-        valueRepository.save(new Value("Jack", 10L));
-        valueRepository.save(new Value("Queen", 10L));
-        valueRepository.save(new Value("King", 10L));
-        valueRepository.save(new Value("Ace", 11L));
+        cardDeckRepository.deleteAll();
 
-        // Initialize card table
+        List<String> names = new ArrayList<String>(Arrays.asList(
+                "Two",
+                "Three",
+                "Four",
+                "Five",
+                "Six",
+                "Seven",
+                "Eight",
+                "Nine",
+                "Ten",
+                "Jack",
+                "Queen",
+                "King",
+                "Ace"
+        ));
+
+        List<Long> points = new ArrayList<>(Arrays.asList(
+                2L,
+                3L,
+                4L,
+                5L,
+                6L,
+                7L,
+                8L,
+                9L,
+                10L,
+                10L,
+                10L,
+                10L,
+                11L
+        ));
+
         List<String> suits = Arrays.asList("Clubs", "Hearts", "Spades", "Diamonds");
-        List<String> names = Arrays.asList("Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
-                "Ten", "Jack", "Queen", "King", "Ace");
+
+        Long position = 1L;
+        long id = 1L;
+
+
         for (Long deck = 1L; deck <= decks; deck++) {
             for (String suit : suits) {
-                for (String name : names) {
+                for (int i = 0; i < names.size(); i++) {
+                    String name = names.get(i);
+                    Long point = points.get(i);
                     UUID uuid = randomUUID();
-                    cardRepository.save(new Card(uuid, name, suit, deck));
+
+
+                    cardDeckRepository.save(new CardDeck(
+                            id,
+                            uuid,
+                            name,
+                            suit,
+                            position,
+                            point,
+                            deck
+                    ));
+                    ++id;
+                    ++position;
                 }
             }
         }
 
-        // Initialize deck table
-        Long position = 1L;
-        Iterable<Card> cards = cardRepository.findAll();
-        for (Card card : cards) {
-            Deck deckItem = new Deck(card, position);
-            deckRepository.save(deckItem);
-            position++;
+        Iterable<CardDeck> cardDecksIterable = cardDeckRepository.findAll();
+        List<CardDeck> cardDecks = new ArrayList<>();
+        for (CardDeck cardDeckIterable : cardDecksIterable) {
+            cardDecks.add(cardDeckIterable);
         }
 
-        return String.format("New Deck using %s decks.", decks);
+        return cardDecks;
     }
 
     @GetMapping("/shuffle")
     public String shuffleDeck() {
 
-        // Read order of cards
-        Iterable<Deck> deck = deckRepository.findAll();
-        List<Long> order = new ArrayList<Long>();
-        for (Deck deckItem : deck) {
-            order.add(deckItem.getPosition());
-        }
+        Iterable<CardDeck> cardDeck = cardDeckRepository.findAll();
+        List<Long> order = new ArrayList<>();
 
-        // Shuffle order
-        Collections.shuffle(order);
+        cardDeck.forEach(card -> {
+            order.add(card.getPosition());
+        });
 
-        // Write new order of cards
-        ListIterator<Long> orderItr = order.listIterator();
-        for (Deck deckItem : deck) {
-            deckItem.setPosition(orderItr.next());
-            deckRepository.save(deckItem);
-        }
         return "Deck shuffled.";
     }
 
     @GetMapping("/deal")
     public String dealCard() {
+        Iterable<CardDeck> cardDecks = cardDeckRepository.findAll();
 
-        Deck deckItem = deckRepository.findFirstByOrderByPositionDesc().orElseGet(null);
-        deckRepository.delete(deckItem);
+        Long position = 0L;
+        Long id = 0L;
 
-        return String.format("Dealt %s of %s: Worth %s points.", deckItem.getCard().getName(), deckItem.getCard().getSuit(),
-                            deckItem.getCard().getValue().getPoints());
+        for (CardDeck cardDeck : cardDecks) {
+            if (position < cardDeck.getPosition()) {
+                position = cardDeck.getPosition();
+                id = cardDeck.getID();
+            }
+        }
+
+        CardDeck cardDeckToBeDeleted = cardDeckRepository.findById(id).get();
+
+        cardDeckRepository.delete(cardDeckToBeDeleted);
+
+        return String.format("Dealt %s of %s: Worth %s points.", cardDeckToBeDeleted.getName(), cardDeckToBeDeleted.getSuit(),
+                cardDeckToBeDeleted.getPoints());
+
     }
-
 }
